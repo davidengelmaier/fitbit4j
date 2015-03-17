@@ -335,6 +335,128 @@ public class FitbitApiClientAgent extends FitbitAPIClientSupport implements Seri
     }
 
     /**
+     * Retrieve the device's alarms
+     *
+     * @param localUser authorized user
+     * @param deviceId device id
+     *
+     * @return list of alarms
+     *
+     * @throws com.fitbit.api.FitbitAPIException Fitbit API Exception
+     * @see <a href="https://wiki.fitbit.com/display/API/API-Devices-Get-Alarms API: API-Devices-Get-Alarms</a>
+     */
+    public List<Alarm> getAlarms(LocalUserDetail localUser, String deviceId) throws FitbitAPIException {
+        // Example: GET /1/user/-/devices/tracker/456665/alarms.json
+        setAccessToken(localUser);
+        String url = APIUtil.contextualizeUrl(getApiBaseUrl(), getApiVersion(), "/user/" + localUser.getUserId() + "/devices/tracker/" + deviceId + "/alarms", APIFormat.JSON);
+        Response res = httpGet(url, true);
+        throwExceptionIfError(res);
+        try {
+            JSONArray array = res.asJSONObject().getJSONArray("trackerAlarms");
+            List<Alarm> alarms = new ArrayList<Alarm>(array.length());
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject jsonAlarm = array.getJSONObject(i);
+                alarms.add(new Alarm(jsonAlarm));
+            }
+            return alarms;
+        } catch (JSONException e) {
+            throw new FitbitAPIException("Error parsing alarms: " + e, e);
+        }
+    }
+
+    /**
+     * Add alarm to the device
+     *
+     * @param localUser authorized user
+     * @param deviceId device id
+     *
+     * @return alarm
+     *
+     * @throws com.fitbit.api.FitbitAPIException Fitbit API Exception
+     * @see <a href="https://wiki.fitbit.com/display/API/API-Devices-Add-Alarm API: API-Devices-Add-Alarm</a>
+     */
+    public Alarm addAlarm(LocalUserDetail localUser, Alarm alarm, String deviceId) throws FitbitAPIException {
+        // Example: POST /1/user/-/devices/tracker/55777/alarms.json
+        setAccessToken(localUser);
+        String url = APIUtil.contextualizeUrl(getApiBaseUrl(), getApiVersion(), "/user/" + localUser.getUserId() + "/devices/tracker/" + deviceId + "/alarms", APIFormat.JSON);
+
+        List<PostParameter> params = new ArrayList<PostParameter>();
+        params.add(new PostParameter("time", alarm.getTime()));
+        params.add(new PostParameter("enabled", alarm.isEnabled()));
+        params.add(new PostParameter("recurring", alarm.isRecurring()));
+        params.add(new PostParameter("weekDays", "[" + StringUtils.join(alarm.getWeekDays(), ",") + "]"));
+
+        Response res = httpPost(url, params.toArray(new PostParameter[params.size()]), true);
+        throwExceptionIfError(res);
+        try {
+            return new Alarm(res.asJSONObject().getJSONObject("trackerAlarm"));
+        } catch (JSONException e) {
+            throw new FitbitAPIException("Error parsing json response to Alarm object: ", e);
+        }
+    }
+
+    /**
+     * Update the device's alarm
+     *
+     * @param localUser authorized user
+     * @param deviceId device id
+     *
+     * @return alarm
+     *
+     * @throws com.fitbit.api.FitbitAPIException Fitbit API Exception
+     * @see <a href="https://wiki.fitbit.com/display/API/API-Devices-Update-Alarm API: API-Devices-Update-Alarm</a>
+     */
+    public Alarm updateAlarm(LocalUserDetail localUser, Alarm alarm, String deviceId) throws FitbitAPIException {
+        // Example: POST /1/user/-/devices/tracker/55777/alarms/123.json
+        // POST /<api-version>/user/<user-id>/devices/tracker/<device-id>/alarms/<alarm-id>.<response-format>
+        setAccessToken(localUser);
+        String url = APIUtil.contextualizeUrl(getApiBaseUrl(), getApiVersion(), "/user/" + localUser.getUserId() + "/devices/tracker/" + deviceId + "/alarms/" + alarm.getId(), APIFormat.JSON);
+
+        List<PostParameter> params = new ArrayList<PostParameter>();
+        params.add(new PostParameter("time", alarm.getTime()));
+        params.add(new PostParameter("enabled", alarm.isEnabled()));
+        params.add(new PostParameter("recurring", alarm.isRecurring()));
+        params.add(new PostParameter("weekDays", "[" + StringUtils.join(alarm.getWeekDays(), ",") + "]"));
+        params.add(new PostParameter("snoozeLength", alarm.getSnoozeLength()));
+        params.add(new PostParameter("snoozeCount", alarm.getSnoozeCount()));
+        if (alarm.getLabel() != null) params.add(new PostParameter("label", alarm.getLabel()));
+        if (alarm.getVibe() != null) params.add(new PostParameter("vibe", alarm.getVibe()));
+
+        Response res = httpPost(url, params.toArray(new PostParameter[params.size()]), true);
+        throwExceptionIfError(res);
+        try {
+            return new Alarm(res.asJSONObject().getJSONObject("trackerAlarm"));
+        } catch (JSONException e) {
+            throw new FitbitAPIException("Error parsing json response to Alarm object: ", e);
+        }
+    }
+
+    /**
+     * Delete the device's alarm
+     *
+     * @param localUser authorized user
+     * @param deviceId device id
+     *
+     * @return alarm
+     *
+     * @throws com.fitbit.api.FitbitAPIException Fitbit API Exception
+     * @see <a href="https://wiki.fitbit.com/display/API/API-Devices-Delete-Alarm API: API-Devices-Delete-Alarm</a>
+     */
+    public Alarm deleteAlarm(LocalUserDetail localUser, Alarm alarm, String deviceId) throws FitbitAPIException {
+        // DELETE /<api-version>/user/-/devices/tracker/<device-id>/alarms/<alarm-id>.<response-format>
+        setAccessToken(localUser);
+        String url = APIUtil.contextualizeUrl(getApiBaseUrl(), getApiVersion(), "/user/" + localUser.getUserId() + "/devices/tracker/" + deviceId + "/alarms/" + alarm.getId(), APIFormat.JSON);
+
+        Response res = httpDelete(url, true);
+        throwExceptionIfError(res);
+        try {
+            return new Alarm(res.asJSONObject().getJSONObject("trackerAlarm"));
+        } catch (JSONException e) {
+            throw new FitbitAPIException("Error parsing json response to Alarm object: ", e);
+        }
+    }
+
+    /**
      * Get a list of a user's favorite activities. The activity id contained in the record retrieved can be used to log the activity
      *
      * @param localUser authorized user
